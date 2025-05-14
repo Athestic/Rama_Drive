@@ -4,12 +4,13 @@ import 'login.dart';
 import 'colors.dart';
 import 'home.dart';
 import 'homeadmin.dart';
-import 'user.dart';
+import 'Add_Driver.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:http_parser/http_parser.dart';
+import 'admingetalldriver.dart';
 
 
 class AddVehicleScreen extends StatefulWidget {
@@ -25,15 +26,25 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   int? selectedCategoryId;
   int? selectedLocationId;
   String? selectedColor;
+  List<Map<String, dynamic>> Vehiclegroup = [];
+  int? selectedVehiclegroupId;
   List<Map<String, dynamic>> categories = [];
   List<Map<String, dynamic>> locations = [];
-  List<String> colors = ["Red", "Blue", "Black", "White", "Silver", "Green", "Yellow"];
+  List<String> colors = [
+    "Red",
+    "Blue",
+    "Black",
+    "White",
+    "Silver",
+    "Green",
+    "Yellow"
+  ];
   File? selectedImage;
   TextEditingController yearController = TextEditingController();
   final TextEditingController yearofmodelController = TextEditingController();
   final TextEditingController yearofpurchaseController = TextEditingController();
   final TextEditingController enginetypeController = TextEditingController();
-  final TextEditingController enginepowerController = TextEditingController();
+  final TextEditingController fuelcapacityController = TextEditingController();
   final TextEditingController averageController = TextEditingController();
   final TextEditingController numberplateController = TextEditingController();
   final TextEditingController registrationController = TextEditingController();
@@ -47,6 +58,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       });
     }
   }
+
   int _selectedIndex = 2;
 
 
@@ -62,6 +74,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     fetchCategories();
     fetchLocations();
     fetchManufacturers();
+    fetchVehiclegroup();
   }
 
   Future<void> fetchManufacturers() async {
@@ -71,7 +84,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
-          manufacturers = data.map((item) => {
+          manufacturers = data.map((item) =>
+          {
             "id": item["vM_Id"],
             "name": item["vM_Name"]
           }).toList();
@@ -81,6 +95,34 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       print("Error fetching manufacturers: $e");
     }
   }
+
+  Future<void> fetchVehiclegroup() async {
+    final url = Uri.parse(
+        'http://192.168.1.110:8081/api/Driver/GetVehicleGroups');
+    try {
+      final response = await http.get(url);
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print("Decoded Data: $data");
+
+        setState(() {
+          Vehiclegroup = data.map<Map<String, dynamic>>((item) =>
+          {
+            "id": item["vehicleGroupId"],
+            "name": item["vehicleGroup"]
+          }).toList();
+        });
+      } else {
+        print("Failed to fetch vehicle groups");
+      }
+    } catch (e) {
+      print("Error fetching Vehicle Group: $e");
+    }
+  }
+
   Future<void> addVehicle() async {
     final url = Uri.parse('http://192.168.1.110:8081/api/Driver/AddVehicle');
 
@@ -90,22 +132,25 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       request.fields['CategoryId'] = selectedCategoryId.toString();
       request.fields['Average'] = averageController.text;
       request.fields['NumberPlate'] = numberplateController.text;
-      request.fields['RC_Number'] = registrationController.text;
+      request.fields['RegistrationNumber'] = registrationController.text;
       request.fields['LocationId'] = selectedLocationId.toString();
       request.fields['VM_Id'] = selectedManufacturerId.toString();
       request.fields['ModelId'] = selectedModelId.toString();
       request.fields['ModelYear'] = yearofmodelController.text;
-      request.fields['PurchaseYear'] = yearofpurchaseController.text;
+      request.fields['FuelCapacity'] = yearofpurchaseController.text;
       request.fields['Color'] = selectedColor ?? "Unknown";
       request.fields['EngineType'] = enginetypeController.text;
-      request.fields['EnginePower'] = enginepowerController.text;
+      // request.fields['EnginePower'] = enginepowerController.text;
 
 
       if (selectedImage != null) {
         var imageFile = await http.MultipartFile.fromPath(
-          'file',                                // Field name in the API
-          selectedImage!.path,                    // Image file path
-          filename: selectedImage!.path.split('/').last, // Filename for the image
+          'VehicleImage', // Field name in the API
+          selectedImage!.path, // Image file path
+          filename: selectedImage!
+              .path
+              .split('/')
+              .last, // Filename for the image
           contentType: MediaType('image', 'jpeg'), // Set content type correctly
         );
         request.files.add(imageFile);
@@ -152,7 +197,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
-          models = data.map((item) => {
+          models = data.map((item) =>
+          {
             "id": item["modelId"],
             "name": item["modelName"]
           }).toList();
@@ -165,13 +211,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   Future<void> fetchCategories() async {
-    final url = Uri.parse('http://192.168.1.110:8081/api/Driver/GetActiveVehicleCategories');
+    final url = Uri.parse(
+        'http://192.168.1.110:8081/api/Driver/GetActiveVehicleCategories');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
-          categories = data.map((item) => {
+          categories = data.map((item) =>
+          {
             "id": item["categoryId"],
             "name": item["categoryName"]
           }).toList();
@@ -183,13 +231,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   Future<void> fetchLocations() async {
-    final url = Uri.parse('http://192.168.1.110:8081/api/Driver/GetAllLocation');
+    final url = Uri.parse(
+        'http://192.168.1.110:8081/api/Driver/GetAllLocation');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
-          locations = data.map((item) => {
+          locations = data.map((item) =>
+          {
             "id": item["locationId"],
             "name": item["locationName"]
           }).toList();
@@ -199,24 +249,36 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       print("Error fetching locations: $e");
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
-    double textScale = MediaQuery.of(context).textScaleFactor;
+    double screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    double screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    double textScale = MediaQuery
+        .of(context)
+        .textScaleFactor;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Center(
-          child: Text(
-            "Add New Vehicle",
-            style: TextStyle(color: Colors.black, fontSize: 18 * textScale, fontWeight: FontWeight.bold),
+        title: Text(
+          "Add New Vehicle",
+          style: TextStyle(
+            color: AppColors.primaryColor,
+            fontSize: 18 * textScale,
+            fontWeight: FontWeight.bold,
           ),
         ),
+
         elevation: 0,
         backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
@@ -224,328 +286,179 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       body: Container(
         color: Colors.white,
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(screenWidth * 0.04),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (context) => Container(
-                        padding: EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: Icon(Icons.camera_alt),
-                              title: Text("Take Photo"),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickImage(ImageSource.camera);
-                              },
-                            ),
-                            ListTile(
-                              leading: Icon(Icons.photo_library),
-                              title: Text("Choose from Gallery"),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickImage(ImageSource.gallery);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Colors.teal, Colors.blueAccent],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Colors.white,
-                        backgroundImage: selectedImage != null ? FileImage(selectedImage!) : null,
-                        child: selectedImage == null
-                            ? Icon(Icons.camera_alt, color: Colors.grey[600], size: 40)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // SizedBox(height: screenHeight * 0.02),
+              //
+              // // Vehicle Image Section
+              // Center(
+              //   child: GestureDetector(
+              //     onTap: () {
+              //       showModalBottomSheet(
+              //         context: context,
+              //         builder: (context) => buildImagePickerBottomSheet(),
+              //       );
+              //     },
+              //     child: Stack(
+              //       alignment: Alignment.center,
+              //       children: [
+              //         Container(
+              //           width: 130,
+              //           height: 130,
+              //           decoration: BoxDecoration(
+              //             shape: BoxShape.circle,
+              //             gradient: LinearGradient(
+              //               colors: [Colors.teal, Colors.blueAccent],
+              //               begin: Alignment.topLeft,
+              //               end: Alignment.bottomRight,
+              //             ),
+              //             boxShadow: [
+              //               BoxShadow(
+              //                 color: Colors.black26,
+              //                 blurRadius: 8,
+              //                 offset: Offset(0, 4),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+              //         CircleAvatar(
+              //           radius: 60,
+              //           backgroundColor: Colors.white,
+              //           backgroundImage: selectedImage != null ? FileImage(selectedImage!) : null,
+              //           child: selectedImage == null
+              //               ? Icon(Icons.camera_alt, color: Colors.grey[600], size: 35)
+              //               : null,
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
+
+              // SizedBox(height: screenHeight * 0.03),
+
+              // --- Vehicle Details Section ---
+              sectionTitle("Vehicle Details"),
+              buildDropdown("Select Manufacturer", manufacturers, selectedManufacturerId, (val) {
+                setState(() {
+                  selectedManufacturerId = val;
+                  fetchModels(val!);
+                });
+              }),
+              buildDropdown("Select Model", models, selectedModelId, (val) {
+                setState(() => selectedModelId = val);
+              }),
+              buildTextField("Year of Model", yearofmodelController),
+
+              // SizedBox(height: screenHeight * 0.02),
+
+              // --- Location Section ---
+              sectionTitle("Location Details"),
+              buildDropdown("Select Base Location", locations, selectedLocationId, (val) {
+                setState(() => selectedLocationId = val);
+              }),
+              buildDropdown("Select Vehicle Group", Vehiclegroup, selectedVehiclegroupId, (val) {
+                setState(() => selectedVehiclegroupId = val);
+              }),
+
+              // SizedBox(height: screenHeight * 0.02),
+
+              // --- Specifications Section ---
+              sectionTitle("Specifications"),
+              buildTextField("Vehicle Engine Type", enginetypeController),
+              buildTextField("Fuel Capacity", fuelcapacityController),
+              buildDropdown("Select Vehicle Category", categories, selectedCategoryId, (val) {
+                setState(() => selectedCategoryId = val);
+              }),
+              buildTextField("Average km/L", averageController),
+              //
+              // SizedBox(height: screenHeight * 0.02),
+
+              // --- Registration Section ---
+              sectionTitle("Registration Details"),
+              buildTextField("Number Plate", numberplateController),
+              buildTextField("Registration Number", registrationController),
 
               SizedBox(height: screenHeight * 0.02),
-
-              DropdownButtonFormField<int>(
-                value: selectedManufacturerId,
-                hint: Text("Select Manufacturer"),
-                onChanged: (value) {
-                  setState(() {
-                    selectedManufacturerId = value;
-                    fetchModels(value!);
-                  });
-                },
-                items: manufacturers.map((manufacturer) {
-                  return DropdownMenuItem<int>(
-                    value: manufacturer["id"],
-                    child: Text(manufacturer["name"]),
+              Text(
+                "Vehicle Image",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16 * textScale,
+                  color: AppColors.primaryColor
+                ),
+              ),
+              SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) => Container(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: Icon(Icons.camera_alt),
+                            title: Text("Take Photo"),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _pickImage(ImageSource.camera);
+                            },
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.photo_library),
+                            title: Text("Choose from Gallery"),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _pickImage(ImageSource.gallery);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   );
-                }).toList(),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-
-              DropdownButtonFormField<int>(
-                value: selectedModelId,
-                hint: Text("Select Model"),
-                onChanged: (value) {
-                  setState(() {
-                    selectedModelId = value;
-                  });
                 },
-                items: models.map((model) {
-                  return DropdownMenuItem<int>(
-                    value: model["id"],
-                    child: Text(model["name"]),
-                  );
-                }).toList(),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: yearofmodelController,
-                decoration: InputDecoration(
-
-                  labelText: 'Year of Model',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
+                child: selectedImage != null
+                    ? Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      selectedImage!,
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  hintText: 'Year of Model',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: yearofpurchaseController,
-                decoration: InputDecoration(
-
-                  labelText: 'Year of Purchase',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
+                )
+                    : Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  hintText: 'Year of Purchase',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              DropdownButtonFormField<String>(
-                value: selectedColor,
-                hint: Text("Select Vehicle Color"),
-                onChanged: (value) {
-                  setState(() {
-                    selectedColor = value;
-                  });
-                },
-                items: colors.map((color) {
-                  return DropdownMenuItem<String>(
-                    value: color,
-                    child: Text(color),
-                  );
-                }).toList(),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              DropdownButtonFormField<int>(
-                value: selectedLocationId,
-                hint: Text("Select Base Location"),
-                onChanged: (value) {
-                  setState(() {
-                    selectedLocationId = value;
-                  });
-                },
-                items: locations.map((location) {
-                  return DropdownMenuItem<int>(
-                    value: location["id"],
-                    child: Text(location["name"]),
-                  );
-                }).toList(),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: enginetypeController,
-                decoration: InputDecoration(
-
-                  labelText: 'Vehicle Engine Type',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
+                  child: Center(
+                    child: Icon(Icons.image_outlined, size: 40, color: Colors.grey),
                   ),
-                  hintText: 'Vehicle Engine Type',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: enginepowerController,
-                decoration: InputDecoration(
-
-                  labelText: 'Vehicle Engine Power',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
-                  ),
-                  hintText: 'Vehicle Engine Power',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              DropdownButtonFormField<int>(
-                value: selectedCategoryId,
-                hint: Text("Select Vehicle Category"),
-                onChanged: (value) {
-                  setState(() {
-                    selectedCategoryId = value;
-                  });
-                },
-                items: categories.map((category) {
-                  return DropdownMenuItem<int>(
-                    value: category["id"],
-                    child: Text(category["name"]),
-                  );
-                }).toList(),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                  filled: true,
-                  fillColor: Colors.white,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: averageController,
-                decoration: InputDecoration(
 
-                  labelText: 'Average km/L',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
-                  ),
-                  hintText: 'Average km/L',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: numberplateController,
-                decoration: InputDecoration(
-
-                  labelText: 'Number Plate',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
-                  ),
-                  hintText: 'Number Plate',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              TextFormField(
-                controller: registrationController,
-                decoration: InputDecoration(
-
-                  labelText: 'Registration Number',
-                  labelStyle: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16.0,
-                  ),
-                  hintText: 'Registration Number',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18.0,
-                ),
-
-              ),
               SizedBox(height: screenHeight * 0.03),
+
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: addVehicle,
-
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 4,
                   ),
                   child: Text(
@@ -554,36 +467,93 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   ),
                 ),
               ),
+              SizedBox(height: screenHeight * 0.03),
             ],
           ),
         ),
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: Colors.teal,
-        shape: CircleBorder(),
-        child: Icon(Icons.add, size: 30, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.white,
-        shape: CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.home, "Home", 0),
 
-            _buildNavItem(Icons.approval, "Approvals", 1),
-            SizedBox(width: screenWidth * 0.1),
-            _buildNavItem(Icons.directions_car, "Vehicles", 2),
-            _buildNavItem(Icons.person, "Me", 3)
-          ],
+
+    );
+  }
+
+  Widget buildDropdown(String hint, List<Map<String, dynamic>> items, int? selectedValue, Function(int?) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: DropdownButtonFormField<int>(
+        value: selectedValue,
+        hint: Text(hint),
+        onChanged: onChanged,
+        items: items.map((item) {
+          return DropdownMenuItem<int>(
+            value: item["id"],
+            child: Text(item["name"]),
+          );
+        }).toList(),
+        decoration: InputDecoration(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+          filled: true,
+          fillColor: Colors.white,
         ),
       ),
     );
   }
+
+  Widget buildTextField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.black, fontSize: 16.0),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        style: TextStyle(color: Colors.black, fontSize: 18.0),
+      ),
+    );
+  }
+
+  Widget sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 20),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
+      ),
+    );
+  }
+
+  Widget buildImagePickerBottomSheet() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.camera_alt),
+            title: Text("Take Photo"),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.camera);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.photo_library),
+            title: Text("Choose from Gallery"),
+            onTap: () {
+              Navigator.pop(context);
+              _pickImage(ImageSource.gallery);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildYearTextField() {
     return GestureDetector(
       onTap: () async {
@@ -615,111 +585,88 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
 
 
-  Widget _buildTextField(String hint) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: hint,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-          filled: true,
-          fillColor: Colors.white,
-        ),
-      ),
-    );
-  }
 
-  Widget _buildImageUploadButton() {
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.image, color: Colors.grey),
-          SizedBox(width: 10),
-          Text("Add images of vehicle", style: TextStyle(color: Colors.grey)),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: _selectedIndex == index ? Colors.black : Colors.grey),
-          Text(
-            label,
-            style: TextStyle(
-              color: _selectedIndex == index ? Colors.black : Colors.grey,
-              fontWeight: _selectedIndex == index ? FontWeight.bold : FontWeight.normal,
+  // Widget _buildImageUploadButton() {
+  //   return Container(
+  //     padding: EdgeInsets.all(10),
+  //     decoration: BoxDecoration(
+  //       border: Border.all(color: Colors.grey),
+  //       borderRadius: BorderRadius.circular(10),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Icon(Icons.image, color: Colors.grey),
+  //         SizedBox(width: 10),
+  //         Text("Add images of vehicle", style: TextStyle(color: Colors.grey)),
+  //       ],
+  //     ),
+  //   );
+  // }
 
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-void showSuccessPopup(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.transparent, // Transparent for full effect
-        child: Stack(
-          alignment: Alignment.topCenter,
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white, // White Card Background
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("Done!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  Text(
-                    "Vehicle has been registered successfully",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext); // Close popup
-                      // Add navigation if needed
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor2, // Maroon Button Color
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+
+  void showSuccessPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.transparent, // Transparent for full effect
+          child: Stack(
+            alignment: Alignment.topCenter,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white, // White Card Background
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.only(
+                    top: 60, left: 20, right: 20, bottom: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Done!", style: TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 10),
+                    Text(
+                      "Vehicle has been registered successfully",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
                     ),
-                    child: Text("View Vehicle", style: TextStyle(fontSize: 16, color: Colors.white)),
-                  ),
-                ],
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext); // Close popup
+                        // Add navigation if needed
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryColor2,
+                        // Maroon Button Color
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30)),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 12),
+                      ),
+                      child: Text("View Vehicle",
+                          style: TextStyle(fontSize: 16, color: Colors.white)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Positioned(
-              top: -30, // Floating Icon
-              child: CircleAvatar(
-                backgroundColor: Colors.green,
-                radius: 30,
-                child: Icon(Icons.check, color: Colors.white, size: 35),
+              Positioned(
+                top: -30, // Floating Icon
+                child: CircleAvatar(
+                  backgroundColor: Colors.green,
+                  radius: 30,
+                  child: Icon(Icons.check, color: Colors.white, size: 35),
+                ),
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

@@ -13,6 +13,7 @@ class AppColors {
   static const Color cardColor2 = Color(0xFF99EED2);
   static const Color cardColor3 = Color(0xFFF4F4F4);
   static const Color cardColor4 = Color(0xFFFFE79E);
+  static const Color cardColor5 = Color(0xFF000000);
 
 
   // MaterialColor for primary and secondary colors with shades

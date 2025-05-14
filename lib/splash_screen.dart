@@ -1,56 +1,58 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ramadrive/colors.dart';
 import 'package:ramadrive/login.dart';
 import 'home.dart';
 
-
 class SplashScreen extends StatefulWidget {
-  final bool isLoggedIn;
-  const SplashScreen({super.key, required this.isLoggedIn});
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
   @override
-  @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => widget.isLoggedIn ? HomePage() : LoginScreen(),
-        ),
-      );
-    });
+    _checkUserSession();
   }
 
+  /// Check user session and navigate accordingly
+  Future<void> _checkUserSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+    int? driverId = prefs.getInt('driverid');
+
+    await Future.delayed(const Duration(seconds: 2)); // Show splash for 2 seconds
+
+    if (token != null && driverId != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage(driverId: driverId)),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Get screen size
+    final Size screenSize = MediaQuery.of(context).size;
+    final double imageWidth = screenSize.width * 0.8;
+    final double imageHeight = screenSize.height * 0.4;
+
     return Scaffold(
-      backgroundColor: AppColors.primaryColor1,
-      body: Column(
-        children: <Widget>[
-          Spacer(flex: 4),
-          Center(
-            child: Image.asset(
-              'assets/rama.png',
-              width: 400,
-              height: 500,
-            ),
-          ),
-          Spacer(flex: 3), // Pushes the text to the bottom
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: Text(
-          //     'Rcs Global Pvt. Ltd.',
-          //     style: TextStyle(color: Colors.white, fontSize: 24, fontStyle: FontStyle.italic
-          //     ),
-          //   ),
-          // ),
-        ],
+      body: Center(
+        child: Image.asset(
+          'assets/ramadrive.png',
+          width: imageWidth,
+          height: imageHeight,
+        ),
       ),
     );
   }

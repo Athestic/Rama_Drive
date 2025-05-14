@@ -1,0 +1,2 @@
+/Users/ramagroup/StudioProjects/RamaDrive/android/app/.cxx/Debug/6e5p13m5/x86/CMakeFiles/edit_cache.dir
+/Users/ramagroup/StudioProjects/RamaDrive/android/app/.cxx/Debug/6e5p13m5/x86/CMakeFiles/rebuild_cache.dir

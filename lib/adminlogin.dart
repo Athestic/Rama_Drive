@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'colors.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+
+import 'colors.dart';
 import 'otp_verificationadmin.dart';
 import 'homeadmin.dart';
 import 'login.dart';
@@ -48,9 +49,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text.trim();
-    final String apiUrl = "http://192.168.1.110:8081/api/Admin/AdminLogin?Username=$username&Password=$password";
-
-
+    final String apiUrl =
+        "http://192.168.1.110:8081/api/Admin/AdminLogin?Username=$username&Password=$password";
 
     try {
       final response = await http.post(
@@ -73,7 +73,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OtpVerificationScreen(decryptedOtp),
+              builder: (context) => OtpVerificationadminScreen(decryptedOtp),
             ),
           );
         } else {
@@ -92,7 +92,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   String decryptOtp(String encryptedOtp) {
     final key = encrypt.Key.fromUtf8("12345678912345698745632165498712");
     final iv = encrypt.IV.fromUtf8("1234569874123659");
-    final encrypter = encrypt.Encrypter(encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: 'PKCS7'));
+    final encrypter = encrypt.Encrypter(
+        encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: 'PKCS7'));
     return encrypter.decrypt64(encryptedOtp, iv: iv);
   }
 
@@ -104,105 +105,150 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    double paddingHorizontal = size.width * 0.08;
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    final isTablet = screenWidth > 500;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF54c8be), Color(0xFF065a54)],
-          ),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => LoginScreen()));
+          },
         ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: size.height * 0.05),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        title: RichText(
+          text: TextSpan(
             children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) =>LoginScreen()),
-                  );
-                },
-                child: Row(
-                  children: [
-                    Icon(Icons.arrow_back, color: Colors.white, size: size.width * 0.06),
-                    SizedBox(width: 8),
-                    Text('Back', style: TextStyle(fontSize: size.width * 0.045, color: Colors.white)),
-                  ],
-                ),
-              ),
-              SizedBox(height: size.height * 0.02),
-              Text(
-                'RamaDrive',
+              TextSpan(
+                text: "Rama",
                 style: TextStyle(
-                  fontSize: size.width * 0.08,
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primaryColor2,
+                  color: AppColors.secondaryColor,
                 ),
               ),
-              SizedBox(height: size.height * 0.04),
-              TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  hintText: 'Enter Username',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                  prefixIcon: Icon(Icons.person, color: Colors.black87),
+              TextSpan(
+                text: "Drive",
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.normal,
+                  color: AppColors.secondaryColor,
                 ),
               ),
-              SizedBox(height: size.height * 0.025),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Enter Password',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                  prefixIcon: Icon(Icons.lock, color: Colors.black87),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black87),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-              ),
-              SizedBox(height: size.height * 0.025),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _isChecked,
-                    activeColor: AppColors.primaryColor2,
-                    onChanged: (bool? value) => setState(() => _isChecked = value!),
-                  ),
-                  Text(
-                    'I agree to the Terms & Conditions',
-                    style: TextStyle(fontSize: size.width * 0.035, color: Colors.white),
-                  ),
-                ],
-              ),
-              Spacer(),
-              ElevatedButton(
-                onPressed: _isButtonDisabled ? null : adminLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  minimumSize: Size(double.infinity, 50),
-                ),
-                child: Text("Continue", style: TextStyle(fontSize: 18, color: Colors.white)),
-              ),
-              SizedBox(height: 40),
             ],
           ),
         ),
+        centerTitle: true,
+
+      ),
+      body: _buildLoginForm(screenWidth, screenHeight, isTablet: isTablet),
+    );
+  }
+
+  Widget _buildLoginForm(double screenWidth, double screenHeight,
+      {bool isTablet = false}) {
+    double horizontalPadding = isTablet ? 32 : 20;
+    double titleFontSize = isTablet ? 36 : 30;
+    double inputFontSize = screenWidth < 400 ? 14 : 16;
+    double spacing = screenHeight * 0.02;
+
+    return Container(
+      color: Colors.white,
+      width: double.infinity,
+      height: screenHeight, // Ensure full height to avoid overflow
+      padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding, vertical: spacing),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Login into your\nAccount",
+            style: TextStyle(
+              fontSize: titleFontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              height: 1.3,
+              fontFamily: 'Albert_Sans',
+            ),
+          ),
+          SizedBox(height: spacing),
+          Text(
+            'Use admin credentials to proceed.',
+            style: TextStyle(fontSize: inputFontSize, color: Colors.black),
+          ),
+          SizedBox(height: spacing),
+          TextField(
+            controller: _usernameController,
+            decoration: InputDecoration(
+              hintText: 'Enter Username',
+              filled: true,
+              fillColor: Colors.white,
+              border:
+              OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+              prefixIcon: Icon(Icons.person),
+            ),
+          ),
+          SizedBox(height: spacing),
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              hintText: 'Enter Password',
+              filled: true,
+              fillColor: Colors.white,
+              border:
+              OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+              prefixIcon: Icon(Icons.lock),
+              suffixIcon: IconButton(
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+          ),
+          SizedBox(height: spacing),
+          Row(
+            children: [
+              Checkbox(
+                value: _isChecked,
+                activeColor: AppColors.primaryColor2,
+                onChanged: (bool? value) =>
+                    setState(() => _isChecked = value!),
+              ),
+              Expanded(
+                child: Text(
+                  'I agree to the Terms & Conditions',
+                  style: TextStyle(fontSize: inputFontSize),
+                ),
+              ),
+            ],
+          ),
+          Spacer(),
+          ElevatedButton(
+            onPressed: _isButtonDisabled ? null : adminLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.secondaryColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30)),
+              minimumSize: Size(double.infinity, 50),
+            ),
+            child: Text("Continue",
+                style: TextStyle(color: Colors.white, fontSize: 16)),
+          ),
+        ],
       ),
     );
   }
-}
 
+}

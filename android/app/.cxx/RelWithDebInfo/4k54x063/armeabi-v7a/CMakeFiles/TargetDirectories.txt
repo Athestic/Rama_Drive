@@ -1,0 +1,2 @@
+/Users/ramagroup/StudioProjects/RamaDrive/android/app/.cxx/RelWithDebInfo/4k54x063/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/ramagroup/StudioProjects/RamaDrive/android/app/.cxx/RelWithDebInfo/4k54x063/armeabi-v7a/CMakeFiles/rebuild_cache.dir

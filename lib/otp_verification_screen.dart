@@ -5,12 +5,21 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home.dart';
 import 'dart:async';
+import 'colors.dart';
+import 'package:lottie/lottie.dart';
+import 'login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   String encryptedOtp;
+  final int driverId;
 
-  OtpVerificationScreen({required this.phoneNumber, required this.encryptedOtp});
+  OtpVerificationScreen({
+    required this.phoneNumber,
+    required this.encryptedOtp,
+    required this.driverId,
+  });
 
   @override
   _OtpVerificationScreenState createState() => _OtpVerificationScreenState();
@@ -18,7 +27,6 @@ class OtpVerificationScreen extends StatefulWidget {
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final TextEditingController otpController = TextEditingController();
-
   static const String encryptionKey = "12345678912345698745632165498712";
   static const String encryptionIV = "1234569874123659";
   int _secondsRemaining = 120;
@@ -29,15 +37,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void initState() {
     super.initState();
     startTimer();
+    print(widget.driverId);
   }
-
 
   String decryptOtp(String encryptedOtp) {
     try {
       final key = encrypt.Key.fromUtf8(encryptionKey);
       final iv = encrypt.IV.fromUtf8(encryptionIV);
       final encrypter = encrypt.Encrypter(encrypt.AES(key, mode: encrypt.AESMode.cbc));
-
       final decrypted = encrypter.decrypt64(encryptedOtp, iv: iv);
       return decrypted;
     } catch (e) {
@@ -45,18 +52,62 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     }
   }
 
-  void verifyOtp() {
+
+
+  void verifyOtp() async {
     String decryptedOtp = decryptOtp(widget.encryptedOtp);
     String userEnteredOtp = otpController.text.trim();
 
     if (decryptedOtp == userEnteredOtp) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Lottie.asset(
+                      'assets/Animation.json',
+                      fit: BoxFit.cover,
+                      animate: true,
+                      repeat: true,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.check_circle, size: 80, color: Colors.green);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text("Verifying...", style: TextStyle(fontSize: 16)),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      await Future.delayed(Duration(seconds: 2));
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', widget.encryptedOtp);
+      await prefs.setInt('driverid', widget.driverId);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage(driverId: widget.driverId)),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Invalid OTP"), backgroundColor: Colors.red),
       );
     }
   }
+
   void startTimer() {
     _timer?.cancel();
     _secondsRemaining = 120;
@@ -78,16 +129,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Future<void> resendOtp() async {
     if (!_isResendEnabled) return;
-
     setState(() {
       _isResendEnabled = false;
     });
-
     _timer?.cancel();
     startTimer();
-
-    String url = "http://192.168.1.110:8081/api/Driver/Login?PhoneNo=${widget.phoneNumber}";
-
+    String url = "http://192.168.1.110:8081/api/Driver/LoginByPhoneNumber?MobileNumber=${widget.phoneNumber}";
     try {
       final response = await http.post(Uri.parse(url));
 
@@ -96,10 +143,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         setState(() {
           widget.encryptedOtp = data["encryptedOtp"];
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data["message"]), backgroundColor: Colors.blue),
-        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to resend OTP"), backgroundColor: Colors.red),
@@ -111,112 +154,152 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       );
     }
   }
+
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.teal.shade300, Colors.teal.shade700],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 50),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-              SizedBox(height: 20),
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      "OTP Verification",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.05,
+              vertical: 50,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+                  },
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/arrow_back.png',
+                        width: 24,
+                        height: 24,
+                        color: Colors.black,
                       ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      "OTP has been sent to +91 ${widget.phoneNumber}",
-                      style: TextStyle(color: Colors.white70),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 20),
-                    Pinput(
-                      controller: otpController,
-                      length: 6,
-                      defaultPinTheme: PinTheme(
-                        width: 50,
-                        height: 50,
-                        textStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white),
-                          color: Colors.white54,
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    SizedBox(height: 20),
-                    Column(
+                      SizedBox(width: 8),
+                      Text('Back', style: TextStyle(color: Colors.black)),
+                    ],
+                  ),
+                ),
+                Center(
+                  child: RichText(
+                    text: TextSpan(
                       children: [
-                        if (!_isResendEnabled)
-                          Text(
-                            "Resend  in $_secondsRemaining seconds",
-                            style: TextStyle(fontSize: 16, color: Colors.white70),
-                          )
-                        else
-                          GestureDetector(
-                            onTap: resendOtp,
-                            child: Text(
-                              "Resend",
-                              style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        TextSpan(
+                          text: "Rama",
+                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.secondaryColor),
+                        ),
+                        TextSpan(
+                          text: "Drive",
+                          style: TextStyle(fontSize: 25, fontWeight: FontWeight.normal, color: AppColors.secondaryColor),
+                        ),
                       ],
                     ),
-
-                    SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: verifyOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                const Text(
+                  "OTP Verification",
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "OTP has been sent to +91 ${widget.phoneNumber}",
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Pinput(
+                        controller: otpController,
+                        length: 6,
+                        defaultPinTheme: PinTheme(
+                          width: screenWidth * 0.12,
+                          height: 50,
+                          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade400),
+                            color: Colors.grey.shade100,
                           ),
-
-                          padding: EdgeInsets.symmetric(vertical: 10),
                         ),
-                        child: Text(
-                          "Verify",
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                        keyboardType: TextInputType.number,
                       ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Countdown Timer
+                    Text(
+                      _secondsRemaining > 0
+                          ? "0${_secondsRemaining ~/ 60}:${(_secondsRemaining % 60).toString().padLeft(2, '0')}"
+                          : "",
+                      style: const TextStyle(fontSize: 16, color: Colors.black54),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ),
+
+                const SizedBox(height: 20),
+
+                // Resend Button
+                GestureDetector(
+                  onTap: _isResendEnabled ? resendOtp : null,
+                  child: RichText(
+                    text: TextSpan(
+                      text: "Didn’t receive the code? ",
+                      style: const TextStyle(fontSize: 16, color: Colors.black),
+                      children: [
+                        TextSpan(
+                          text: "Resend",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _isResendEnabled ? AppColors.primaryColor : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Verify Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: verifyOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text(
+                      "Verify",
+                      style: TextStyle(fontSize: 18, color: Colors.white, fontFamily: 'Albert_Sans'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home.dart';
 import 'colors.dart';
 import 'adminlogin.dart';
+import 'ramaemployee.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,31 +31,49 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  bool _isButtonDisabled = false;
+  bool _isButtonDisabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // checkSession();
+    _phoneController.addListener(() {
+      setState(() {
+        _isButtonDisabled = _phoneController.text.isEmpty;
+
+      });
+    });
+  }
 
   Future<void> sendOtp() async {
     setState(() => _isButtonDisabled = true);
     final String phoneNumber = _phoneController.text.trim();
-    final String apiUrl = "http://192.168.1.110:8081/api/Driver/Login?PhoneNo=$phoneNumber";
+    final String apiUrl = "http://192.168.1.110:8081/api/Driver/LoginByPhoneNumber?MobileNumber=$phoneNumber";
 
     try {
       final response = await http.post(Uri.parse(apiUrl));
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData.containsKey('encryptedOtp') && responseData.containsKey('token')) {
+        if (responseData.containsKey('encryptedOtp') &&
+            responseData.containsKey('token') &&
+            responseData.containsKey('driverid')) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', responseData['token']);
+          await prefs.setString('token', responseData['token']);
+          await prefs.setInt('driverid', responseData['driverid']);
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => OtpVerificationScreen(
-                phoneNumber: phoneNumber,
-                encryptedOtp: responseData['encryptedOtp'],
-              ),
+              builder: (context) =>
+                  OtpVerificationScreen(
+                    phoneNumber: phoneNumber,
+                    encryptedOtp: responseData['encryptedOtp'],
+                    driverId: responseData['driverid'],
+                  ),
             ),
           );
         } else {
-          showError("OTP or token not received.");
+          showError("OTP, token, or driver ID not received.");
         }
       } else {
         showError("Please enter correct mobile number.");
@@ -62,22 +81,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       showError("Error: $e");
     } finally {
-      setState(() => _isButtonDisabled = false);
+      setState(() => _isButtonDisabled = _phoneController.text.isEmpty);
     }
   }
 
-  Future<void> checkSession() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (prefs.getString('auth_token') != null) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    checkSession();
-  }
 
   void showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -85,137 +92,216 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+
+  Widget _accountTypeCard(String title, String assetPath, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+                Image.asset(assetPath, width: 50, height: 50),
+                SizedBox(height: 10),
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            double screenWidth = constraints.maxWidth;
-            double screenHeight = constraints.maxHeight;
-
-            return Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.08,
-                vertical: screenHeight * 0.05,
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF54c8be), Color(0xFF065a54)],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'RamaDrive',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.07,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryColor2,
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  Text(
-                    'Manage your vehicle',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.045,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.08),
-                  SizedBox(
-                    width: screenWidth * 0.9,
-                    child: TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        prefixIcon: Padding(
-                          padding: EdgeInsets.all(screenWidth * 0.03),
-                          child: Text(
-                            '+91',
-                            style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
-                          ),
-                        ),
-                        hintText: 'Enter Your Number',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.03),
-                  Center(
-                    child: SizedBox(
-                      width: screenWidth * 0.9,
-                      height: screenHeight * 0.06,
-                      child: ElevatedButton(
-                        onPressed: _isButtonDisabled ? null : sendOtp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        ),
-                        child: _isButtonDisabled
-                            ? CircularProgressIndicator(color: Colors.white)
-                            : Text('Login', style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.white,fontFamily: 'Poppins'),),
-                      ),
-                    ),
-                  ),
-                  Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      SizedBox(
-                        width: screenWidth * 0.8,
-                        height: screenWidth * 0.2,
-                        child: Stack(
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Red Line Positioned Correctly
-                            Positioned(
-                              top: screenWidth * 0.12, // Adjust height to align below images
-                              left: screenWidth * 0.13,
-                              right: screenWidth *0.18,// Start the line from the front of the car
-                              child: Container(
-                                height: 2, // Thin line
-                                width: screenWidth * 0.55,
-                                color: Colors.red, // Line color
+                            Center(
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: "Rama",
+                                      style: TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.secondaryColor,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: "Drive",
+                                      style: TextStyle(
+                                        fontSize: 30,
+                                        color: AppColors.secondaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-
-
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.end, // Align images at bottom
-                              children: [
-                                Align(
-                                  alignment: Alignment.bottomLeft,
-                                  child: Image.asset('assets/car.png', width: screenWidth * 0.15),
+                            SizedBox(height: 40),
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "Log in to your\n",
+                                    style: TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      height: 1.5,
+                                      fontFamily: 'Albert_Sans',
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "account",
+                                    style: TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      fontFamily: 'Albert_Sans',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Enter Number Associated with Emp ID.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                prefixIcon: Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child:
+                                  Text("+91", style: TextStyle(fontSize: 16)),
                                 ),
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Image.asset('assets/hospital.png', width: screenWidth * 0.2),
+                                hintText: "Enter Your Number",
+                                filled: true,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
-                              ],
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Spacer(),
+                            ElevatedButton(
+                              onPressed: _isButtonDisabled ? null : sendOtp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                minimumSize: Size(double.infinity, 50),
+                              ),
+                              child: Text(
+                                "Get OTP",
+                                style: TextStyle(
+                                    color: Colors.white, fontFamily: 'Poppins'),
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          RamaemployeeScreen()),
+                                );
+                              },
+                              child: Center(
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: "Don’t have an account? ",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.normal,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: "Create Now",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.secondaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  SizedBox(height: screenHeight * 0.02),
-                ],
+                );
+              },
+            ),
+            Positioned(
+              top: 10,
+              right: 20,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AdminLoginScreen()),
+                  );
+                },
+                icon: Padding(
+                  padding: EdgeInsets.only(left: 5),
+                  child: Image.asset(
+                    "assets/me.png",
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                label: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text("Admin", style: TextStyle(color: Colors.white)),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 3),
+                ),
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
   }
+
 }
